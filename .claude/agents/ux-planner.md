@@ -216,6 +216,9 @@ Katie's feedback was handled.
 ```
 ~/elara-agent/scripts/publish-plan.sh <task-id> "Plan: <task title>" .agent/plans/<task-id>.md
 ```
+The tab title is a short name of 2–5 words for the feature (e.g. "Plan: Website connection",
+"Plan: Article voice-overs"), not the task's long first sentence. Use the same name in the
+plan's **Task:** line. On a revision keep the same name.
 It creates (or, on a revision, rewrites) the task's own tab under the **Plans** tab, with
 the pictures, and sets the task to `plan_review` in `.agent/tasks.json`. If publishing
 fails (doc not shared as Editor, key missing...), keep the plan file, set the task to

@@ -115,7 +115,63 @@ func Parse(doc string) []Task {
 		}
 	}
 	flush()
+	if len(out) == 0 {
+		// No "Task:" lines: treat every bullet as a task (Katie's "Future Plans" list).
+		out = parseBullets(doc)
+	}
 	return dedupeIDs(out)
+}
+
+// bulletIDWords is how many opening words of a bullet make its id, so small edits
+// later in the bullet keep the same task (and the same plan tab).
+const bulletIDWords = 6
+
+// parseBullets makes one task per "- " line. The title is the bullet's first sentence
+// (shortened), the whole bullet is the description, and the heading above it, if any,
+// is kept in the description for context.
+func parseBullets(doc string) []Task {
+	var out []Task
+	heading := ""
+	for _, line := range strings.Split(doc, "\n") {
+		if strings.HasPrefix(line, "## ") {
+			heading = strings.TrimSpace(line[3:])
+			continue
+		}
+		b := bulletRe.FindStringSubmatch(line)
+		if b == nil {
+			continue
+		}
+		text := strings.TrimSpace(b[1])
+		words := strings.Fields(text)
+		idWords := words
+		if len(idWords) > bulletIDWords {
+			idWords = idWords[:bulletIDWords]
+		}
+		what := text
+		if heading != "" {
+			what = heading + ": " + text
+		}
+		out = append(out, Task{
+			ID: Slug(strings.Join(idWords, " ")), Title: bulletTitle(text), Priority: "normal",
+			What: what, Status: StatusPending, FromDoc: true,
+		})
+	}
+	return out
+}
+
+// bulletTitle is the bullet's first sentence, cut to about 80 characters on a word.
+func bulletTitle(text string) string {
+	if i := strings.IndexAny(text, ".!?"); i > 0 {
+		text = text[:i]
+	}
+	if len(text) <= 80 {
+		return text
+	}
+	cut := strings.LastIndex(text[:80], " ")
+	if cut < 40 {
+		cut = 80
+	}
+	return strings.TrimSpace(text[:cut]) + "…"
 }
 
 // Merge combines tasks parsed from the doc with the existing task file. Existing tasks

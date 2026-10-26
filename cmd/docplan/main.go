@@ -34,7 +34,7 @@ const plansTabTitle = "Plans"
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: docplan publish|decisions [flags]")
+		fmt.Fprintln(os.Stderr, "usage: docplan publish|decisions|read|decide [flags]")
 		os.Exit(2)
 	}
 	var err error
@@ -43,6 +43,10 @@ func main() {
 		err = publish(os.Args[2:])
 	case "decisions":
 		err = decisions(os.Args[2:])
+	case "read":
+		err = read(os.Args[2:])
+	case "decide":
+		err = decide(os.Args[2:])
 	default:
 		err = fmt.Errorf("unknown command %q", os.Args[1])
 	}

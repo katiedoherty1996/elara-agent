@@ -16,8 +16,35 @@ the user, pick the one that is simpler to build and cheaper to run.
 - Read the task in `.agent/tasks.json` (`what`, `doneWhen`, `design`) and the source text
   in `.agent/tasks-source.md`. If it has `planFeedback`, this is a **revision**: Katie's
   feedback comes first, and the new plan must say what changed because of it.
-- Look at what already exists so the plan fits: the relevant screens in `frontend/src/pages`,
-  services, and earlier plans in `.agent/plans/`. Reuse what's there.
+
+## 1b. Study what Elara has today (before any research)
+The plan is built **on top of the current codebase**, never from a blank page. Read the
+real code; don't guess from file names.
+- **Which code is "current":** `origin/main` plus the open PRs, since many finished
+  features are waiting for Katie to merge. `gh pr list --state open` shows them;
+  `git log origin/main..origin/<branch>` and `git diff origin/main...origin/<branch>` show
+  what each adds. Read them with `git show origin/<branch>:<path>`. Don't check out
+  branches: other work may be in progress.
+- **Map everything the feature touches,** with file paths:
+  - screens and components (`frontend/src/pages`, `components`, `hooks`, `services`) and
+    where the feature would naturally live (an existing screen, menu or dialog);
+  - backend endpoints, services and repositories (`backend/internal`), background jobs,
+    AI and retrieval pipeline pieces;
+  - tables and columns (`backend/migrations`), and the data already stored that the
+    feature can use;
+  - shared helpers it should reuse (httpx, the resource service factory, upload,
+    storage, toasts, dialogs...);
+  - earlier plans in `.agent/plans/` and notes in `.agent/PROGRESS.md` about this area.
+- **See it running** if the feature changes an existing screen: start the stack
+  (`make up`, `make seed`), screenshot the current screen at 1440×900 and 390×844 as
+  `design/<task-id>/proposal/before-desktop.png` / `before-phone.png`, then `make down`.
+  The mockup starts from that screen, so the plan shows before and after.
+- **Then decide how to build on it:** extend what exists first; add something new only
+  when nothing fits, and say why. If the existing code would fight the best solution
+  (for example, a component that can't be extended cleanly), say what has to change and
+  how big that change is.
+- This also feeds the technical research: "easiest to build in Elara" means easiest
+  **given this code**.
 
 ## 2. Research online (WebSearch + WebFetch)
 Do real searches and open the pages. Never write a fact, price or company from memory.
@@ -123,6 +150,13 @@ plus the tables.
 ## In one line
 What the user will be able to do, in their words.
 
+## What Elara has today
+2–5 bullets: what already exists for this (screens, data, endpoints, helpers), with the
+main file paths, and what's missing. Mention open PRs it builds on ("Builds on #41").
+
+![Today, desktop](design/<task-id>/proposal/before-desktop.png)
+(only when an existing screen changes)
+
 ## What the user does
 1. ... (the recommended option, step by step; say the click count: "2 clicks")
 
@@ -160,7 +194,8 @@ to build, or both).
 - screens and components (new or reused);
 - data: new tables or fields, and what they hold;
 - backend: new endpoints, background jobs, outside services (and their keys);
-- what Elara already has that this reuses;
+- what Elara already has that this reuses or extends (file paths), and what's new;
+- which open PRs it depends on, if any;
 - risks and how they're handled (big files, slow AI, many users at once, other
   organisations' data).
 

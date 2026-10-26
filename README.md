@@ -19,9 +19,11 @@ Google Doc ──fetchtasks──▶ .agent/tasks.json
         │ 1. sync tasks from the Doc                                   │
         │ 2. PR merged?            → mark its task done                │
         │ 3. new review comments?  → a session fixes them first        │
-        │ 4. pending task?         → a session builds it, opens a PR   │
-        │ 5. usage limit / timeout → sleep, then resume the same session│
-        │ 6. nothing to do         → check again in 5 minutes          │
+        │ 4. new task?             → ux-planner writes a plan into the │
+        │                            Doc and waits for your Decision   │
+        │ 5. approved task?        → a session builds it, opens a PR   │
+        │ 6. usage limit / timeout → sleep, then resume the same session│
+        │ 7. nothing to do         → check again in 5 minutes          │
         └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -40,15 +42,22 @@ Google Doc ──fetchtasks──▶ .agent/tasks.json
    `cmd/fetchtasks` reads the Doc with a read-only Google service account and merges it into
    `.agent/tasks.json`. Tasks already started keep their status; tasks deleted from the Doc
    are flagged, not dropped. See [`examples/tasks.json`](examples/tasks.json).
-2. **Session.** Each loop starts one headless `claude -p` session, which follows
+2. **Plan.** A new task first goes to the **ux-planner** subagent. It researches how other
+   companies solve it and which tools could (popularity, ease, price), picks the simplest
+   option for end users, draws a mockup from the design system, counts clicks and words,
+   and writes the plan into its own tab under **Plans** in the Google Doc
+   (`cmd/docplan`, `scripts/publish-plan.sh`). Change its `Decision:` line to `Approved`
+   (or `Approved option B`) to have it built; write anything else to get a revised plan.
+   Needs the Doc shared with the service account as **Editor**.
+3. **Session.** Each loop starts one headless `claude -p` session, which follows
    [`CLAUDE.md`](CLAUDE.md) for one task: branch → design (if any) → schema → tests first →
    code → reuse / security / performance reviews → QA on the VPS → PR.
-3. **PR.** The PR has a short plain-English description, screenshots (pushed to a
+4. **PR.** The PR has a short plain-English description, screenshots (pushed to a
    `pr-assets` branch), and three report comments: 🔒 Security, 🧪 QA, ⚡ Performance.
-4. **Review comments.** Comment on the PR. The runner picks up every comment that doesn't
+5. **Review comments.** Comment on the PR. The runner picks up every comment that doesn't
    carry the agent's invisible `<!-- elara-agent -->` marker, and the next session turns each
    one into a `fix:` task on that branch, fixes it test-first, pushes and replies.
-5. **Merge marks done.** When you merge a PR, the runner flips its task to `done`.
+6. **Merge marks done.** When you merge a PR, the runner flips its task to `done`.
 
 The agent's own state (`.agent/PROGRESS.md`, `tasks.json`, QA checklists, reports) stays on
 the VPS and is never committed: PRs are code-only, enforced by a pre-push hook
@@ -61,10 +70,11 @@ the VPS and is never committed: PRs are code-only, enforced by a pre-push hook
 | `scripts/run-agent.sh` | The loop: task sync, merge detection, review-comment pickup, session start/resume, usage-limit sleeps |
 | `scripts/elara-agent.service` | systemd unit that keeps the loop running |
 | `scripts/fetch-tasks.sh` | Pull the task Doc by hand |
+| `cmd/docplan`, `internal/gdoc`, `scripts/publish-plan.sh` | Publish plans as Doc tabs and read back the Decision line |
 | `cmd/fetchtasks`, `internal/tasks` | Go: read the Doc, parse `Task:` blocks, merge into `tasks.json` |
 | `CLAUDE.md` | The project rulebook the agent follows (task flow, code style, PR format) |
 | `rulebook/user-CLAUDE.md` | Owner rules that override everything else; goes in `~/.claude/CLAUDE.md` on the VPS |
-| `.claude/agents/*.md` | Subagents: design-implementer, postgres-schema, ai-rag-engineer, reuse-reviewer, security-reviewer, performance-tuner, qa-tester |
+| `.claude/agents/*.md` | Subagents: ux-planner (copy to `~/.claude/agents/`), design-implementer, postgres-schema, ai-rag-engineer, reuse-reviewer, security-reviewer, performance-tuner, qa-tester |
 | `.claude/settings.json` | Permission deny-list (no force-push, no push to main, no merge, no reading `.env`/SSH keys) |
 | `lefthook-local.yml` | Pre-push guard: PR branches may not touch `.agent/`, `.github/`, `docs/`, `design/` |
 | `design/README.md` | How designs are handed to the agent |

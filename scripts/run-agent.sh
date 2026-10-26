@@ -40,6 +40,14 @@ sync_tasks() {
     || log "tasks: fetch failed (see above); using existing tasks.json"
 }
 
+# sync_plan_decisions reads Katie's Decision line on each plan tab in the Doc:
+# approved plans go back to pending (ready to build), others to plan_changes.
+sync_plan_decisions() {
+  if [ -z "${GOOGLE_DOC_ID:-}" ] || [ ! -f "${GOOGLE_SA_KEY_FILE:-/nonexistent}" ]; then return; fi
+  (cd "$AGENT_DIR" && go run ./cmd/docplan decisions -tasks "$REPO/.agent/tasks.json") 2>&1 | tee -a "$LOG" >/dev/null \
+    || log "plans: reading decisions failed (see above)"
+}
+
 # mark_merged flips in_review tasks to done once their PR is merged.
 mark_merged() {
   local pr state tmp
@@ -77,7 +85,7 @@ collect_review_comments() {
 
 # has_work reports whether any task still needs the agent.
 has_work() {
-  [ "$(jq '[.tasks[] | select((.status=="pending" or .status=="in_progress") and (.removedInDoc | not))] | length' .agent/tasks.json)" -gt 0 ]
+  [ "$(jq '[.tasks[] | select((.status=="pending" or .status=="in_progress" or .status=="plan_changes") and (.removedInDoc | not))] | length' .agent/tasks.json)" -gt 0 ]
 }
 
 # final_message prints Claude's closing result text plus any non-JSON lines (stderr).
@@ -115,7 +123,8 @@ PROMPT_NEW='You are the Elara build agent running unattended on the VPS. Nobody 
 Follow CLAUDE.md exactly.
 1. Read .agent/PROGRESS.md.
 2. If .agent/runner/new-comments.md has entries, handle those first: each is Katie'"'"'s PR review comment. Make each one a fix: task on that PR'"'"'s branch, fix it test-first, push, reply on the PR in one plain line (include the marker <!-- elara-agent --> in every comment you post), then append each handled comment id on its own line to .agent/runner/handled-comments.txt.
-3. Otherwise take the next task from .agent/tasks.json (fix: tasks first, then in_progress, then pending in doc order; skip removedInDoc) and take it through the whole flow until its PR is open with the three report comments.
+3. Otherwise, if a task is plan_changes, or a pending task with fromDoc true has no planApproved, plan it first (plan_changes first, then doc order): delegate that ONE task to the ux-planner subagent. It researches, draws a mockup, publishes the plan to its own tab in the Google Doc and sets the task to plan_review. Build nothing for it; stop after that one plan.
+4. Otherwise take the next task to build from .agent/tasks.json (fix: tasks first, then in_progress, then pending with planApproved, in doc order; skip removedInDoc and plan_review) and take it through the whole flow until its PR is open with the three report comments. Build the option Katie approved (planChoice) from .agent/plans/<id>.md.
 Put <!-- elara-agent --> at the end of every PR description and comment you write.
 PRs are code-only: never commit .agent/, .github/, docs/ or design/ (CLAUDE.md rule 6).
 Finish that one piece of work, update .agent/tasks.json and .agent/PROGRESS.md (save them, do not commit them), then stop.'
@@ -129,6 +138,7 @@ while true; do
   load_env
   git fetch -q origin 2>>"$LOG" || log "git: fetch failed"
   sync_tasks
+  sync_plan_decisions
   mark_merged
 
   resume=false

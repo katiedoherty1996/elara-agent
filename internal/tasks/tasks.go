@@ -3,6 +3,7 @@
 package tasks
 
 import (
+	"encoding/json"
 	"regexp"
 	"strconv"
 	"strings"
@@ -14,6 +15,10 @@ const (
 	StatusInProgress = "in_progress"
 	StatusInReview   = "in_review"
 	StatusDone       = "done"
+	// A plan is in the Google Doc, waiting for Katie (see cmd/docplan).
+	StatusPlanReview = "plan_review"
+	// Katie asked for changes to the plan; the planner rewrites it.
+	StatusPlanChanges = "plan_changes"
 )
 
 // Task is one unit of work for the agent.
@@ -31,6 +36,16 @@ type Task struct {
 	Notes        string   `json:"notes,omitempty"`
 	FromDoc      bool     `json:"fromDoc"`                // false for tasks the agent created itself
 	RemovedInDoc bool     `json:"removedInDoc,omitempty"` // task heading was deleted from the doc
+
+	// Plan review (ux-planner + cmd/docplan).
+	PlanTabID    string `json:"planTabId,omitempty"`    // the plan's tab in the Google Doc
+	PlanDecision string `json:"planDecision,omitempty"` // waiting | approved | changes
+	PlanChoice   string `json:"planChoice,omitempty"`   // e.g. "option B"
+	PlanFeedback string `json:"planFeedback,omitempty"` // Katie's notes on the plan
+	PlanApproved bool   `json:"planApproved,omitempty"` // build only once this is true
+
+	// Extra keeps fields this struct doesn't know, so a doc sync never drops them.
+	Extra map[string]json.RawMessage `json:"-"`
 }
 
 // File is the shape of .agent/tasks.json.

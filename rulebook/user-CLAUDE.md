@@ -41,3 +41,20 @@ Not in `.github/pr-assets/`. To add one:
 Link them in the PR as
 `![<screen>](https://github.com/katiedoherty1996/elara/blob/pr-assets/<task-id>.png?raw=true)`.
 The `pr-assets` branch never gets a PR.
+
+## Plan before you build
+
+Every new task from the Google Doc gets a plan before any code is written.
+
+- A `pending` task with `fromDoc: true` and no `planApproved` goes to the **ux-planner**
+  subagent first. It writes a user-focused plan (how other companies do it, tools with
+  popularity and price, a mockup, a click and word count), publishes it to its own tab
+  under **Plans** in the Google Doc, and sets the task to `plan_review`.
+- Never build a task in `plan_review`. Katie approves by changing the plan's Decision line
+  to "Approved" (or "Approved option B"); the runner then sets it back to `pending` with
+  `planApproved: true`. Any other Decision text sets it to `plan_changes`: re-run the
+  ux-planner with her feedback, on the same tab.
+- When building an approved task, follow `.agent/plans/<id>.md` and the option in
+  `planChoice`. If what you find while building means the plan can't work, build the
+  closest thing to it and say so in the PR's "Worth a look".
+- `fix:` tasks the agent creates itself skip planning.

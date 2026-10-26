@@ -1,0 +1,8 @@
+.env
+.env.*
+*.jsonl
+.agent/
+agent.log
+*.pem
+*-sa.json
+.credentials.json

@@ -1,0 +1,29 @@
+{
+  "tasks": [
+    {
+      "id": "library-screen",
+      "title": "Library screen",
+      "priority": "high",
+      "design": "library",
+      "what": "Show all of a user's posts with filter chips.",
+      "doneWhen": [
+        "Posts list shows title, type, status",
+        "Filter chips filter the list"
+      ],
+      "status": "in_review",
+      "branch": "task/library-screen",
+      "pr": 12,
+      "fromDoc": true
+    },
+    {
+      "id": "fix-library-empty-state",
+      "title": "fix: Library shows a blank page with no posts",
+      "priority": "high",
+      "what": "QA found that a new user with no posts sees an empty page instead of the empty state.",
+      "status": "pending",
+      "branch": "task/library-screen",
+      "parentId": "library-screen",
+      "fromDoc": false
+    }
+  ]
+}

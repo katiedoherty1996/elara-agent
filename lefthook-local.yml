@@ -1,0 +1,13 @@
+# Local only (listed in .git/info/exclude). Katie rule: PR branches are code-only.
+pre-push:
+  commands:
+    code-only-pr:
+      run: |
+        b=$(git rev-parse --abbrev-ref HEAD)
+        if [ "$b" = "pr-assets" ] || [ "$b" = "main" ]; then exit 0; fi
+        bad=$(git diff --name-only origin/main...HEAD -- .agent .github docs design)
+        if [ -z "$bad" ]; then exit 0; fi
+        echo "Blocked: this branch changes non-code files (see ~/.claude/CLAUDE.md, 'PRs are code-only'):"
+        echo "$bad" | head -20
+        echo "Fix: git checkout origin/main -- <path> (git rm --cached for new files), commit, push again."
+        exit 1

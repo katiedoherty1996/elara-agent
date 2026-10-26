@@ -83,6 +83,21 @@ collect_review_comments() {
   [ -s "$out" ]
 }
 
+# ai_budget_guard adds up this month's real-AI test spend (.agent/ai-spend.tsv, written
+# by the agent) and, once it reaches AI_TEST_BUDGET_USD, forces the fake AI for the
+# session: docker compose prefers the shell's LLM_PROVIDER over .env.
+ai_budget_guard() {
+  local budget="${AI_TEST_BUDGET_USD:-23}" spent
+  spent=$(awk -F'\t' -v m="$(date +%Y-%m)" 'NR>1 && index($1,m)==1 {s+=$4} END {printf "%.2f", s+0}' .agent/ai-spend.tsv 2>/dev/null || echo 0)
+  if awk -v s="$spent" -v b="$budget" 'BEGIN {exit !(s >= b)}'; then
+    export LLM_PROVIDER=fake AI_BUDGET_USED_UP=1
+    log "ai budget: \$$spent of \$$budget used this month; real AI off for testing"
+  else
+    unset AI_BUDGET_USED_UP
+    [ "${LLM_PROVIDER:-}" = fake ] && unset LLM_PROVIDER
+  fi
+}
+
 # has_work reports whether any task still needs the agent.
 has_work() {
   if planning_paused; then
@@ -145,6 +160,9 @@ STEP3_PAUSED='3. Planning is paused: Katie is still writing the Google Doc. Do n
 
 # prompt_new fills in step 3 depending on whether planning is paused.
 prompt_new() {
+  if [ -n "${AI_BUDGET_USED_UP:-}" ]; then
+    echo "This month's AI test budget is used up: do not call the real Claude API (LLM_PROVIDER=fake is set); say so in the PR."
+  fi
   if planning_paused; then
     echo "${PROMPT_TEMPLATE/@@STEP3@@/$STEP3_PAUSED}"
   else
@@ -163,6 +181,7 @@ while true; do
   sync_tasks
   sync_plan_decisions
   mark_merged
+  ai_budget_guard
 
   resume=false
   [ -f "$RUNNER/resume" ] && resume=true

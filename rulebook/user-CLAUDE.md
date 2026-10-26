@@ -58,3 +58,33 @@ Every new task from the Google Doc gets a plan before any code is written.
   `planChoice`. If what you find while building means the plan can't work, build the
   closest thing to it and say so in the PR's "Worth a look".
 - `fix:` tasks the agent creates itself skip planning.
+
+## AI test budget (Katie, 2026-10-26)
+
+Katie can spend **€30 a month** on Claude API tokens in total. The agent's testing gets
+**€20 (about $23, `AI_TEST_BUDGET_USD` in ~/elara/.env)**; the rest is for Katie's own
+testing. This overrides "AI features are tested for real" in the repo CLAUDE.md and
+ai-rag-engineer §11 wherever they would cost more.
+
+- **Default is free.** Unit, integration, e2e, visual tests and QA run with
+  `LLM_PROVIDER=fake`. Tasks that don't change AI behaviour (UI, layout, sources,
+  profile...) never call the real Claude API.
+- **Real AI only for AI tasks** (prompts, chat or wizard replies, ideas, tones, drafting,
+  retrieval), and only for the parts the task changed:
+  - live tests: `go test -tags live -run <the tests for this change>`, once; re-run only
+    the tests that failed. The full live suite and `make eval` only when retrieval or
+    the main prompts changed;
+  - browser QA with the real AI: the changed AI steps, a few times, not every screen;
+  - use small inputs; never loop or retry real calls more than twice.
+- **Per task: at most $3.** Estimate before you start; if it needs more, test the most
+  important path for real and the rest with fakes, and say so in the PR.
+- **Log every real-AI run** in `.agent/ai-spend.tsv` (tab-separated, one line each):
+  `date<TAB>task-id<TAB>what<TAB>usd`. Get the cost from Elara's own
+  `elara.ai_usage.cost_micros` (sum the rows your QA made, before tearing the stack down;
+  micros / 1,000,000 = dollars) or from the token usage the live tests log (Claude
+  prices from the claude-api skill). Round up.
+- **Before any real call,** add up this month's lines. If this month's total plus your
+  estimate is over the budget, don't call: build and test with fakes and put "Live AI
+  not run: this month's test budget is used up" in the PR's QA comment. The runner also
+  forces `LLM_PROVIDER=fake` once the log reaches the budget.
+- Never raise the budget yourself; only Katie changes `AI_TEST_BUDGET_USD`.

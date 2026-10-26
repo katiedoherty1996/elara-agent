@@ -182,6 +182,8 @@ while true; do
   sync_plan_decisions
   mark_merged
   ai_budget_guard
+  # PR previews on Tailscale: drop merged/closed ones, rebuild ones with new commits.
+  "$AGENT_DIR/scripts/preview.sh" sync >>"$LOG" 2>&1 || log "preview: sync failed"
 
   resume=false
   [ -f "$RUNNER/resume" ] && resume=true

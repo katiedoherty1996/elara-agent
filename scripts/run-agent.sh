@@ -102,7 +102,7 @@ ai_budget_guard() {
 has_work() {
   if planning_paused; then
     # Only tasks that are ready to build count; unplanned Doc tasks wait.
-    [ "$(jq '[.tasks[] | select((.status=="in_progress" or (.status=="pending" and ((.fromDoc | not) or .planApproved))) and (.removedInDoc | not))] | length' .agent/tasks.json)" -gt 0 ]
+    [ "$(jq '[.tasks[] | select((.status=="in_progress" or (.status=="pending" and (((.fromDoc | not) and (.needsPlan | not)) or .planApproved))) and (.removedInDoc | not))] | length' .agent/tasks.json)" -gt 0 ]
   else
     [ "$(jq '[.tasks[] | select((.status=="pending" or .status=="in_progress" or .status=="plan_changes") and (.removedInDoc | not))] | length' .agent/tasks.json)" -gt 0 ]
   fi
@@ -150,13 +150,13 @@ Follow CLAUDE.md exactly.
 1. Read .agent/PROGRESS.md.
 2. If .agent/runner/new-comments.md has entries, handle those first: each is Katie'"'"'s PR review comment. Make each one a fix: task on that PR'"'"'s branch, fix it test-first, push, reply on the PR in one plain line (include the marker <!-- elara-agent --> in every comment you post), then append each handled comment id on its own line to .agent/runner/handled-comments.txt.
 @@STEP3@@
-4. Otherwise take the next task to build from .agent/tasks.json (fix: tasks first, then in_progress, then pending with planApproved, in doc order; skip removedInDoc and plan_review) and take it through the whole flow until its PR is open with the three report comments. Build the option Katie approved (planChoice) from .agent/plans/<id>.md.
+4. Otherwise take the next task to build from .agent/tasks.json (fix: tasks first, then in_progress, then pending with planApproved, in doc order; skip removedInDoc, plan_review, and needsPlan tasks without planApproved) and take it through the whole flow until its PR is open with the three report comments. Build the option Katie approved (planChoice) from .agent/plans/<id>.md.
 Put <!-- elara-agent --> at the end of every PR description and comment you write.
 PRs are code-only: never commit .agent/, .github/, docs/ or design/ (CLAUDE.md rule 6).
 Finish that one piece of work, update .agent/tasks.json and .agent/PROGRESS.md (save them, do not commit them), then stop.'
 
-STEP3_PLAN='3. Otherwise, if a task is plan_changes, or a pending task with fromDoc true has no planApproved, plan it first (plan_changes first, then doc order): delegate that ONE task to the ux-planner subagent. It researches, draws a mockup, publishes the plan to its own tab in the Google Doc and sets the task to plan_review. Build nothing for it; stop after that one plan.'
-STEP3_PAUSED='3. Planning is paused: Katie is still writing the Google Doc. Do not plan any task and do not use the ux-planner subagent. Skip pending tasks with fromDoc true and no planApproved, and plan_changes tasks.'
+STEP3_PLAN='3. Otherwise, if a task is plan_changes, or a pending task with fromDoc true or needsPlan true has no planApproved, plan it first (plan_changes first, then doc order): delegate that ONE task to the ux-planner subagent. It researches, draws a mockup, publishes the plan to its own tab in the Google Doc and sets the task to plan_review. Build nothing for it; stop after that one plan.'
+STEP3_PAUSED='3. Planning is paused: Katie is still writing the Google Doc. Do not plan any task and do not use the ux-planner subagent. Skip pending tasks with fromDoc true or needsPlan true and no planApproved, and plan_changes tasks.'
 
 # prompt_new fills in step 3 depending on whether planning is paused.
 prompt_new() {

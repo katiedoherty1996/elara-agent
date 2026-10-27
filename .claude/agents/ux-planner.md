@@ -220,7 +220,11 @@ The tab title is a short name of 2–5 words for the feature (e.g. "Plan: Websit
 "Plan: Article voice-overs"), not the task's long first sentence. Use the same name in the
 plan's **Task:** line. On a revision keep the same name.
 It creates (or, on a revision, rewrites) the task's own tab under the **Plans** tab, with
-the pictures, and sets the task to `plan_review` in `.agent/tasks.json`. If publishing
+the pictures, and sets the task to `plan_review` in `.agent/tasks.json`. It also puts the
+tab title as the tab's first heading, linked to the tab itself, and saves that link on the
+task as `planTabUrl`, so don't start the plan with your own title heading. When a plan
+mentions another plan (e.g. "builds on the Instagram-posts plan"), link that task's
+`planTabUrl` so it's clear which tab is meant. If publishing
 fails (doc not shared as Editor, key missing...), keep the plan file, set the task to
 `plan_review` anyway with `notes: "plan not published: <error>"`, and log it in
 `PROGRESS.md`. Don't retry the same way more than twice.
@@ -233,4 +237,4 @@ the mockup is the design: add it to `design/manifest.json` so design-implementer
 it exactly.
 
 Log in `.agent/PROGRESS.md` under the task: plan written, the click and word numbers,
-the tab id, and anything that failed.
+the tab link (`planTabUrl`), and anything that failed.

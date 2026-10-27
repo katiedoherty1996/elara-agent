@@ -27,6 +27,31 @@ the PR template.
 - Code comments must not point at files that are not in the repo (e.g. `docs/api/x.md`,
   `.agent/reports/...`). Put the needed detail in the comment itself.
 
+## Auto mode: nobody is there to answer
+
+The agent runs in auto mode on the VPS. Nobody watches it while it plans, builds or tests,
+so it never waits for an answer.
+
+- Never ask a question (the AskUserQuestion tool is turned off). When something is
+  unclear, a tool or subagent asks you something, or two options look equally good, pick
+  the answer a careful senior developer would pick for Elara's users: the simplest, safest
+  choice that matches the plan and the existing code. Then carry on.
+- If auto mode blocks an action, don't try to get around it; do it another safe way, or
+  skip it and say so.
+- Write down every decision you made this way, with one line on why:
+  - **planning:** in the plan's "Anything you decided without Katie" list;
+  - **building and testing:** in a PR comment headed `## 🤔 Decisions I made` (one bullet
+    each: what came up → what you chose → why), ending with `<!-- elara-agent -->`.
+    Edit that comment if you make more decisions later. No decisions → don't post it.
+  - always also under the task in `.agent/PROGRESS.md`.
+
+## Plan tabs have their link in the heading
+
+Every plan tab in the Google Doc starts with a heading that links to that tab, and the
+same link is saved on the task as `planTabUrl` in `.agent/tasks.json`. Use that link
+whenever you mean a plan: in the PR's "What this adds" ("Plan: <link>"), in comments,
+and when one plan builds on another. Never guess a tab from its title.
+
 ## PR screenshots go on the `pr-assets` branch
 
 Not in `.github/pr-assets/`. To add one:

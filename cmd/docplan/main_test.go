@@ -27,3 +27,11 @@ func TestReadDecision(t *testing.T) {
 		})
 	}
 }
+
+func TestTabHeading(t *testing.T) {
+	got := tabHeading("Plan: Reels [v2]", "https://docs.google.com/document/d/abc/edit?tab=t.1")
+	want := "# [Plan: Reels (v2)](https://docs.google.com/document/d/abc/edit?tab=t.1)"
+	if got != want {
+		t.Errorf("tabHeading = %q, want %q", got, want)
+	}
+}

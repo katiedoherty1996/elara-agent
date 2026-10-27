@@ -49,7 +49,7 @@ func knownKeys() []string {
 	var m map[string]json.RawMessage
 	type plain Task
 	b, _ := json.Marshal(plain{Status: "x", FromDoc: true, Branch: "x", PR: 1, ParentID: "x", Notes: "x",
-		Design: "x", What: "x", DoneWhen: []string{"x"}, RemovedInDoc: true, PlanTabID: "x", PlanDecision: "x",
+		Design: "x", What: "x", DoneWhen: []string{"x"}, RemovedInDoc: true, PlanTabID: "x", PlanTabURL: "x", PlanDecision: "x",
 		PlanChoice: "x", PlanFeedback: "x", PlanApproved: true})
 	_ = json.Unmarshal(b, &m)
 	keys := make([]string, 0, len(m))

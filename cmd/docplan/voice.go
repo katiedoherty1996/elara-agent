@@ -51,6 +51,7 @@ func read(args []string) error {
 		return fmt.Errorf("plan tab %s is gone from the Doc", t.PlanTabID)
 	}
 	fmt.Println(tab.TabProperties.Title)
+	fmt.Println(c.TabURL(t.PlanTabID))
 	fmt.Print(tab.DocumentTab.Body.Text())
 	return nil
 }

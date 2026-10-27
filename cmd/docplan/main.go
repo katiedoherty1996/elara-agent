@@ -4,6 +4,11 @@
 //	docplan publish -task <id> -title "Plan: Library screen" -file plan.md [-image a.png=https://...]
 //	    Creates the plan's tab (or rewrites it, if the task already has one) and prints
 //	    the tab id. Stores the tab id on the task in tasks.json.
+//	    The tab starts with a heading that links to the tab itself, and the link is
+//	    stored on the task as planTabUrl, so anyone reading the plan knows which tab it is.
+//	docplan links
+//	    Adds that linked heading to plan tabs published before it existed, and fills in
+//	    planTabUrl. Safe to run again: tabs that already start with the link are skipped.
 //	docplan decisions
 //	    Reads the "Decision:" line of every plan tab and updates the tasks:
 //	    "Approved ..." → planApproved, back to pending; anything else but "Waiting" →
@@ -22,6 +27,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -34,13 +40,15 @@ const plansTabTitle = "Plans"
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: docplan publish|decisions|read|decide [flags]")
+		fmt.Fprintln(os.Stderr, "usage: docplan publish|links|decisions|read|decide [flags]")
 		os.Exit(2)
 	}
 	var err error
 	switch os.Args[1] {
 	case "publish":
 		err = publish(os.Args[2:])
+	case "links":
+		err = links(os.Args[2:])
 	case "decisions":
 		err = decisions(os.Args[2:])
 	case "read":
@@ -133,17 +141,71 @@ func publish(args []string) error {
 		}
 	}
 
-	if _, err := c.BatchUpdate(ctx, gdoc.MarkdownRequests(string(md), tabID, images)); err != nil {
+	url := c.TabURL(tabID)
+	body := tabHeading(*title, url) + "\n" + string(md)
+	if _, err := c.BatchUpdate(ctx, gdoc.MarkdownRequests(body, tabID, images)); err != nil {
 		return fmt.Errorf("writing the plan into tab %s: %w", tabID, err)
 	}
 
-	task.PlanTabID, task.PlanDecision, task.PlanFeedback = tabID, "waiting", ""
+	task.PlanTabID, task.PlanTabURL, task.PlanDecision, task.PlanFeedback = tabID, url, "waiting", ""
 	task.Status = "plan_review"
 	if err := writeTasks(*tasksPath, file0); err != nil {
 		return err
 	}
 	fmt.Println(tabID)
 	return nil
+}
+
+// tabHeading is the markdown for a plan tab's first line: its title, linking to the tab.
+func tabHeading(title, url string) string {
+	title = strings.NewReplacer("[", "(", "]", ")").Replace(title)
+	return "# [" + title + "](" + url + ")"
+}
+
+// links puts the linked heading on plan tabs that don't have it yet and stores each
+// tab's link on its task.
+func links(args []string) error {
+	fs := flag.NewFlagSet("links", flag.ExitOnError)
+	tasksPath := fs.String("tasks", ".agent/tasks.json", "task file")
+	_ = fs.Parse(args)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	c, err := client(ctx, gdoc.ScopeWrite)
+	if err != nil {
+		return err
+	}
+	tabs, err := c.Tabs(ctx)
+	if err != nil {
+		return err
+	}
+	// Read tasks.json after the slow Docs call, so a runner write in between isn't lost.
+	f, err := readTasks(*tasksPath)
+	if err != nil {
+		return err
+	}
+	for i := range f.Tasks {
+		t := &f.Tasks[i]
+		if t.PlanTabID == "" {
+			continue
+		}
+		tab, ok := gdoc.FindTab(tabs, t.PlanTabID)
+		if !ok {
+			fmt.Printf("docplan: plan tab for %s is gone; skipped\n", t.ID)
+			continue
+		}
+		url := c.TabURL(t.PlanTabID)
+		t.PlanTabURL = url
+		if slices.Contains(tab.DocumentTab.Body.FirstLinks(), url) {
+			continue
+		}
+		heading := tabHeading(tab.TabProperties.Title, url)
+		if _, err := c.BatchUpdate(ctx, gdoc.MarkdownRequests(heading, t.PlanTabID, nil)); err != nil {
+			return fmt.Errorf("adding the heading to %s: %w", t.ID, err)
+		}
+		fmt.Printf("docplan: %s heading linked to %s\n", t.ID, url)
+	}
+	return writeTasks(*tasksPath, f)
 }
 
 // ensurePlansTab returns the id of the top-level "Plans" tab, creating it if needed.

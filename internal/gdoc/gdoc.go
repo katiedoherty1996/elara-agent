@@ -68,7 +68,12 @@ type Body struct {
 		Paragraph *struct {
 			Elements []struct {
 				TextRun *struct {
-					Content string `json:"content"`
+					Content   string `json:"content"`
+					TextStyle struct {
+						Link *struct {
+							URL string `json:"url"`
+						} `json:"link"`
+					} `json:"textStyle"`
 				} `json:"textRun"`
 			} `json:"elements"`
 			Bullet         *struct{} `json:"bullet"`
@@ -113,6 +118,28 @@ func (b Body) Text() string {
 		out.WriteByte('\n')
 	}
 	return out.String()
+}
+
+// TabURL is the link that opens this doc straight at one tab.
+func (c *Client) TabURL(tabID string) string {
+	return "https://docs.google.com/document/d/" + c.docID + "/edit?tab=" + tabID
+}
+
+// FirstLinks returns the links in the body's first paragraph.
+func (b Body) FirstLinks() []string {
+	var links []string
+	for _, c := range b.Content {
+		if c.Paragraph == nil {
+			continue
+		}
+		for _, e := range c.Paragraph.Elements {
+			if e.TextRun != nil && e.TextRun.TextStyle.Link != nil {
+				links = append(links, e.TextRun.TextStyle.Link.URL)
+			}
+		}
+		break
+	}
+	return links
 }
 
 // Tabs downloads the doc and returns its top-level tabs (with content and child tabs).

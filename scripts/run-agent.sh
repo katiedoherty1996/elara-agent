@@ -151,6 +151,8 @@ Follow CLAUDE.md exactly.
 2. If .agent/runner/new-comments.md has entries, handle those first: each is Katie'"'"'s PR review comment. Make each one a fix: task on that PR'"'"'s branch, fix it test-first, push, reply on the PR in one plain line (include the marker <!-- elara-agent --> in every comment you post), then append each handled comment id on its own line to .agent/runner/handled-comments.txt.
 @@STEP3@@
 4. Otherwise take the next task to build from .agent/tasks.json (fix: tasks first, then in_progress, then pending with planApproved, in doc order; skip removedInDoc, plan_review, and needsPlan tasks without planApproved) and take it through the whole flow until its PR is open with the three report comments. Build the option Katie approved (planChoice) from .agent/plans/<id>.md.
+You are in auto mode and nobody can answer: never ask, answer any question yourself with good judgement, and note each such decision (see "Auto mode" in ~/.claude/CLAUDE.md).
+When you mean a plan, use its tab link (planTabUrl in .agent/tasks.json).
 Put <!-- elara-agent --> at the end of every PR description and comment you write.
 PRs are code-only: never commit .agent/, .github/, docs/ or design/ (CLAUDE.md rule 6).
 Finish that one piece of work, update .agent/tasks.json and .agent/PROGRESS.md (save them, do not commit them), then stop.'
@@ -209,7 +211,7 @@ while true; do
   out="$RUNNER/session-$(date +%Y%m%d-%H%M%S).jsonl"
   # .env holds the app's ANTHROPIC_API_KEY (AI wizard + RAG testing only). Hide it so the
   # agent always runs on the Claude subscription login and never bills the API account.
-  timeout "$TASK_TIMEOUT" env -u ANTHROPIC_API_KEY claude "${args[@]}" --permission-mode auto --output-format stream-json --verbose >"$out" 2>&1
+  timeout "$TASK_TIMEOUT" env -u ANTHROPIC_API_KEY claude "${args[@]}" --permission-mode auto --disallowedTools AskUserQuestion --output-format stream-json --verbose >"$out" 2>&1
   rc=$?
 
   reset=$(limit_reset_epoch "$out" "$rc")

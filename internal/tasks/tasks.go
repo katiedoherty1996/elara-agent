@@ -39,6 +39,7 @@ type Task struct {
 
 	// Plan review (ux-planner + cmd/docplan).
 	PlanTabID    string `json:"planTabId,omitempty"`    // the plan's tab in the Google Doc
+	PlanTabURL   string `json:"planTabUrl,omitempty"`   // link straight to that tab
 	PlanDecision string `json:"planDecision,omitempty"` // waiting | approved | changes
 	PlanChoice   string `json:"planChoice,omitempty"`   // e.g. "option B"
 	PlanFeedback string `json:"planFeedback,omitempty"` // Katie's notes on the plan

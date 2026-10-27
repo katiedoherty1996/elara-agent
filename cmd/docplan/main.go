@@ -296,6 +296,11 @@ func decisions(args []string) error {
 			changed = true
 		case "changes":
 			t.Status, t.PlanDecision, t.PlanFeedback = "plan_changes", "changes", d.Notes
+			// Katie may also edit the plan itself, anywhere in the tab. Save the tab as she
+			// left it, so the planner can compare it with the plan it published.
+			if err := saveDocCopy(*tasksPath, t.ID, tab.DocumentTab.Body.Text()); err != nil {
+				fmt.Printf("docplan: couldn't save %s's tab text: %v\n", t.ID, err)
+			}
 			fmt.Printf("docplan: %s needs plan changes\n", t.ID)
 			changed = true
 		}
@@ -304,6 +309,15 @@ func decisions(args []string) error {
 		return nil
 	}
 	return writeTasks(*tasksPath, f)
+}
+
+// saveDocCopy writes a plan tab's text to .agent/plans/<id>.doc.txt, next to the plan.
+func saveDocCopy(tasksPath, id, text string) error {
+	dir := filepath.Join(filepath.Dir(tasksPath), "plans")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(dir, id+".doc.txt"), []byte(text), 0o600)
 }
 
 // Decision is what Katie wrote on a plan.

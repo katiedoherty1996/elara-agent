@@ -16,6 +16,14 @@ the user, pick the one that is simpler to build and cheaper to run.
 - Read the task in `.agent/tasks.json` (`what`, `doneWhen`, `design`) and the source text
   in `.agent/tasks-source.md`. If it has `planFeedback`, this is a **revision**: Katie's
   feedback comes first, and the new plan must say what changed because of it.
+- **On a revision, find all of Katie's feedback:** `planFeedback` (her Decision line and
+  "Your notes"), plus anything she changed elsewhere in the tab: compare
+  `.agent/plans/<task-id>.doc.txt` (the tab as she left it) with `.agent/plans/<task-id>.md`
+  (what you published). Treat every added, removed or reworded line as feedback too.
+- **Then research her feedback afresh**, like a new plan: look up how other companies do
+  what she asked for, check tools and current prices, and redo the mockup, clicks and word
+  count for the parts that change. Keep the parts she didn't question. If her feedback is
+  unclear, pick the most sensible reading, and say which one under "What changed".
 
 ## 1b. Study what Elara has today (before any research)
 The plan is built **on top of the current codebase**, never from a blank page. Read the

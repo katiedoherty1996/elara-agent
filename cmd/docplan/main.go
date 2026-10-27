@@ -259,7 +259,7 @@ func decisions(args []string) error {
 	}
 	waiting := 0
 	for _, t := range f.Tasks {
-		if t.Status == "plan_review" && t.PlanTabID != "" {
+		if watchDecision(t) {
 			waiting++
 		}
 	}
@@ -280,7 +280,7 @@ func decisions(args []string) error {
 	changed := false
 	for i := range f.Tasks {
 		t := &f.Tasks[i]
-		if t.Status != "plan_review" || t.PlanTabID == "" {
+		if !watchDecision(*t) {
 			continue
 		}
 		tab, ok := gdoc.FindTab(tabs, t.PlanTabID)
@@ -289,6 +289,9 @@ func decisions(args []string) error {
 			continue
 		}
 		d := ReadDecision(tab.DocumentTab.Body.Text())
+		if t.Status == "pending" && d.Kind == "approved" {
+			continue // already approved; nothing new
+		}
 		switch d.Kind {
 		case "approved":
 			t.Status, t.PlanApproved, t.PlanDecision, t.PlanChoice, t.PlanFeedback = "pending", true, "approved", d.Choice, d.Notes
@@ -296,6 +299,7 @@ func decisions(args []string) error {
 			changed = true
 		case "changes":
 			t.Status, t.PlanDecision, t.PlanFeedback = "plan_changes", "changes", d.Notes
+			t.PlanApproved, t.PlanChoice = false, ""
 			// Katie may also edit the plan itself, anywhere in the tab. Save the tab as she
 			// left it, so the planner can compare it with the plan it published.
 			if err := saveDocCopy(*tasksPath, t.ID, tab.DocumentTab.Body.Text()); err != nil {
@@ -309,6 +313,15 @@ func decisions(args []string) error {
 		return nil
 	}
 	return writeTasks(*tasksPath, f)
+}
+
+// watchDecision reports whether a task's Decision line still matters: plans waiting for
+// review, and approved plans whose build hasn't started yet (Katie may change her mind).
+func watchDecision(t tasks.Task) bool {
+	if t.PlanTabID == "" {
+		return false
+	}
+	return t.Status == "plan_review" || (t.Status == "pending" && t.PlanApproved)
 }
 
 // saveDocCopy writes a plan tab's text to .agent/plans/<id>.doc.txt, next to the plan.

@@ -4,11 +4,11 @@
 //	docplan publish -task <id> -title "Plan: Library screen" -file plan.md [-image a.png=https://...]
 //	    Creates the plan's tab (or rewrites it, if the task already has one) and prints
 //	    the tab id. Stores the tab id on the task in tasks.json.
-//	    The tab starts with a heading that links to the tab itself, and the link is
+//	    The tab starts with a heading that shows its tab id and links to the tab, and the link is
 //	    stored on the task as planTabUrl, so anyone reading the plan knows which tab it is.
 //	docplan links
 //	    Adds that linked heading to plan tabs published before it existed, and fills in
-//	    planTabUrl. Safe to run again: tabs that already start with the link are skipped.
+//	    planTabUrl. Safe to run again: tabs whose heading already has the link and id are skipped.
 //	docplan decisions
 //	    Reads the "Decision:" line of every plan tab and updates the tasks:
 //	    "Approved ..." → planApproved, back to pending; anything else but "Waiting" →
@@ -142,7 +142,7 @@ func publish(args []string) error {
 	}
 
 	url := c.TabURL(tabID)
-	body := tabHeading(*title, url) + "\n" + string(md)
+	body := tabHeading(*title, tabID, url) + "\n" + string(md)
 	if _, err := c.BatchUpdate(ctx, gdoc.MarkdownRequests(body, tabID, images)); err != nil {
 		return fmt.Errorf("writing the plan into tab %s: %w", tabID, err)
 	}
@@ -156,10 +156,12 @@ func publish(args []string) error {
 	return nil
 }
 
-// tabHeading is the markdown for a plan tab's first line: its title, linking to the tab.
-func tabHeading(title, url string) string {
+// tabHeading is the markdown for a plan tab's first line: its title and tab id (the
+// "tab=" part of the tab's link, so Claude can tell which tab Katie means), linking to
+// the tab.
+func tabHeading(title, tabID, url string) string {
 	title = strings.NewReplacer("[", "(", "]", ")").Replace(title)
-	return "# [" + title + "](" + url + ")"
+	return "# [" + title + " · Tab ID: " + tabID + "](" + url + ")"
 }
 
 // links puts the linked heading on plan tabs that don't have it yet and stores each
@@ -196,11 +198,20 @@ func links(args []string) error {
 		}
 		url := c.TabURL(t.PlanTabID)
 		t.PlanTabURL = url
-		if slices.Contains(tab.DocumentTab.Body.FirstLinks(), url) {
+		first := tab.DocumentTab.Body.First()
+		if slices.Contains(first.Links, url) && strings.Contains(first.Text, t.PlanTabID) {
 			continue
 		}
-		heading := tabHeading(tab.TabProperties.Title, url)
-		if _, err := c.BatchUpdate(ctx, gdoc.MarkdownRequests(heading, t.PlanTabID, nil)); err != nil {
+		var reqs []map[string]any
+		if slices.Contains(first.Links, url) {
+			// An older linked heading without the tab id: replace it.
+			reqs = append(reqs, map[string]any{"deleteContentRange": map[string]any{
+				"range": map[string]any{"startIndex": first.Start, "endIndex": first.End, "tabId": t.PlanTabID},
+			}})
+		}
+		heading := tabHeading(tab.TabProperties.Title, t.PlanTabID, url)
+		reqs = append(reqs, gdoc.MarkdownRequests(heading, t.PlanTabID, nil)...)
+		if _, err := c.BatchUpdate(ctx, reqs); err != nil {
 			return fmt.Errorf("adding the heading to %s: %w", t.ID, err)
 		}
 		fmt.Printf("docplan: %s heading linked to %s\n", t.ID, url)

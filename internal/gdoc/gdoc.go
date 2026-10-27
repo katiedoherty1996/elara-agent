@@ -64,8 +64,9 @@ type Tab struct {
 // Body is the part of a tab that holds the text.
 type Body struct {
 	Content []struct {
-		EndIndex  int `json:"endIndex"`
-		Paragraph *struct {
+		StartIndex int `json:"startIndex"`
+		EndIndex   int `json:"endIndex"`
+		Paragraph  *struct {
 			Elements []struct {
 				TextRun *struct {
 					Content   string `json:"content"`
@@ -125,21 +126,34 @@ func (c *Client) TabURL(tabID string) string {
 	return "https://docs.google.com/document/d/" + c.docID + "/edit?tab=" + tabID
 }
 
-// FirstLinks returns the links in the body's first paragraph.
-func (b Body) FirstLinks() []string {
-	var links []string
+// FirstParagraph is the body's first paragraph: its text, the links in it, and where it
+// starts and ends.
+type FirstParagraph struct {
+	Text       string
+	Links      []string
+	Start, End int
+}
+
+// First returns the body's first paragraph (zero value if there is none).
+func (b Body) First() FirstParagraph {
 	for _, c := range b.Content {
 		if c.Paragraph == nil {
 			continue
 		}
+		p := FirstParagraph{Start: c.StartIndex, End: c.EndIndex}
 		for _, e := range c.Paragraph.Elements {
-			if e.TextRun != nil && e.TextRun.TextStyle.Link != nil {
-				links = append(links, e.TextRun.TextStyle.Link.URL)
+			if e.TextRun == nil {
+				continue
+			}
+			p.Text += e.TextRun.Content
+			if e.TextRun.TextStyle.Link != nil {
+				p.Links = append(p.Links, e.TextRun.TextStyle.Link.URL)
 			}
 		}
-		break
+		p.Text = strings.TrimRight(p.Text, "\n")
+		return p
 	}
-	return links
+	return FirstParagraph{}
 }
 
 // Tabs downloads the doc and returns its top-level tabs (with content and child tabs).
